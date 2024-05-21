@@ -8,148 +8,300 @@
 #include <QLineEdit>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
+#include <iostream>
+#include <cmath>
 
 
-class numberButton : public QWidget{
+class CalculatorButton : public QPushButton{
 public:
-    numberButton(QString &&label, QGridLayout* glayout, int row, int column)
+    CalculatorButton(const QString label, QWidget* parent = nullptr, int width = 80)
+        :QPushButton(label, parent)
     {
-        QPushButton* button = new QPushButton(label);
-        button->setFixedSize(80, 80);
-        button->setStyleSheet("QPushButton {"
-                              "font-size: 38px; padding: 10px;"
-                              "background-color: #404040;"
-                              "color: white;"
-                              "border-radius: 40px"
-                              "}"
-                              "QPushButton:pressed {"
-                              "background-color: #C4C1C1;"                                      "}"
-                               );
-        glayout->addWidget(button, row, column);
+        setFixedSize(width, 80);
+        setStyleSheet(baseStyleSheet());
     }
 
-    numberButton(QString &&label, QHBoxLayout* hlayout, int width)
-    {
-        QPushButton* button = new QPushButton(label);
-        button->setFixedSize(width, 80);
-        button->setStyleSheet("QPushButton {"
-                             "font-size: 38px;"
-                             "padding: 10px;"
-                             "background-color: #404040;"
-                             "color: white;"
-                             "border-radius: 40px;"
-                             "}"
-                             "QPushButton:pressed {"
-                             "background-color: #C4C1C1;"  // Change color when pressed
-                             "}");
-        hlayout->addWidget(button);
+protected:
+    QString baseStyleSheet(){
+        return "QPushButton {"
+               "font-size: 38px;"
+               "padding: 10px;"
+               "border-radius: 40px;"
+               "}";
     }
 };
 
-
-
-
-class operatorButton : public QWidget{
+class NumberButton: public CalculatorButton{
 public:
-    operatorButton(QString &&label, QGridLayout* glayout,
-                 int row, int column,
-                   QString color)
+    NumberButton(const QString label, QWidget* parent = nullptr, int width = 80)
+        :CalculatorButton(label, parent, width)
     {
-        QPushButton* button = new QPushButton(label);
-        QString styleSheet = QString("QPushButton {"
-                                     "font-size: 38px; padding: 10px;"
-                                     "background-color: %1; color: %2;"
-                                     "border-radius: 40px"
-                                     "}"
-                                     "QPushButton:pressed {"
-                                     "background-color: %3;"
-                                     "color: %4"  // Change color when pressed
-                                     "}")
-                                     .arg(color, color == "#FF9933" ? "white" : "black")
-                                     .arg(color == "#FF9933" ? "white" : "#ECE9E9",
-                                      color == "#FF9933" ? "#FF9933" : "black");
-        button->setFixedSize(80, 80);
-        button->setStyleSheet(styleSheet);
-        glayout->addWidget(button, row, column);
-    }
-
-    operatorButton(QString &&label, QHBoxLayout* hlayout)
-    {
-        QPushButton* button = new QPushButton(label);
-        button->setFixedSize(80, 80);
-        button->setStyleSheet("QPushButton {"
-                              "font-size: 38px; padding: 10px;"
-                              "background-color: #FF9933;"
-                              "color: white;"
-                              "border-radius: 40px"
-                              "}"
-                              "QPushButton:pressed {"
-                              "background-color: #FFCC99;"
-                              "}");
-        hlayout->addWidget(button);
+        setStyleSheet(baseStyleSheet() + "QPushButton {"
+                                         "color: white;"
+                                         "background-color: #404040;"
+                                         "}"
+                                         "QPushButton::pressed {"
+                                         "background-color: #C4C1C1;"
+                                         "}");
     }
 };
 
-
-
+class OperatorButton : public CalculatorButton{
+public:
+    OperatorButton(const QString& label, const QString& color, QWidget* parent = nullptr)
+        :CalculatorButton(label, parent, 80)
+    {
+        QString textColor = (color == "#FF9933") ? "white" : "black";
+        QString pressedColor = (color == "#FF9933") ? "#FFCC99" : "#D5CFCF";
+        setStyleSheet(baseStyleSheet() + QString("QPushButton {"
+                                         "color: %1;"
+                                         "background-color: %2"
+                                         "}"
+                                         "QPushButton::pressed {"
+                                         "color: %3;"
+                                         "background-color: %4"
+                                         "}").arg(textColor, color, textColor, pressedColor));
+    }
+};
 
 class Calculator : public QWidget{
+
 public:
-    Calculator(){
-        QGridLayout* glayout = new QGridLayout();
+    Calculator(QWidget* parent = nullptr)
+        :QWidget (parent)
+    {
         QVBoxLayout* vlayout = new QVBoxLayout();
-        QHBoxLayout* hlayout = new QHBoxLayout();
+        QGridLayout* glayout = new QGridLayout();
         glayout->setSpacing(10);
+        vlayout->setSpacing(10);
+        glayout->setContentsMargins(10, 10, 10, 10);
+
 
         display = new QLineEdit();
-        display->setFixedSize(410, 250);
-        display->setReadOnly(true);
+        display->setFixedSize(350, 70);
         display->setAlignment(Qt::AlignRight);
-        display->setStyleSheet("QLineEdit { border: 2px solid black; }");
+        display->setReadOnly(true);
+        display->setStyleSheet("color: white; font-size: 68px; /*border: 2px solid black*/");
+        display->setText("0");
         vlayout->addWidget(display);
 
         int number = 1;
-        for (int i = 3; i >0; --i) { // Loop for rows
-                for (int j = 0; j < 3; ++j) { // Loop for columns
-                    numberButton(QString::number(number), glayout, i, j);
+        for (int i = 3; i >0; --i) {
+                for (int j = 0; j < 3; ++j) {
+                    NumberButton* btn = new NumberButton(QString::number(number), this);
+                    glayout->addWidget(btn, i, j);
+                    connect(btn, &QPushButton::clicked, this, &Calculator::handleNumber);
                     ++number;
                 }
+        }
+
+        addOperator(glayout, "+", "#FF9933", 3, 4, this);
+        addOperator(glayout, "-", "#FF9933", 2, 4, this);
+        addOperator(glayout, "*", "#FF9933", 1, 4, this);
+        addOperator(glayout, "÷", "#FF9933", 0, 4, this);
+        addOperator(glayout, "AC", "#B9B3B3", 0, 0, this);
+        addOperator(glayout, "+/-", "#B9B3B3", 0, 1, this);
+        addOperator(glayout, "%", "#B9B3B3", 0, 2, this);
+
+        NumberButton* zero = new NumberButton("0", this, 160);
+        glayout->addWidget(zero, 4, 0, 1, 2);
+        connect(zero, &QPushButton::clicked, this, &Calculator::handleNumber);
+
+        NumberButton* dot = new NumberButton(",", this, 80);
+        glayout->addWidget(dot, 4, 2);
+        connect(dot, &QPushButton::clicked, this, &Calculator::handleNumber);
+
+        addOperator(glayout, "=", "#B9B3B3", 4, 4, this);
+
+
+
+    vlayout->addLayout(glayout);
+    setLayout(vlayout);
+    }
+
+   // vlayout->addLayout(glayout);
+    //setLayout(vlayout);
+
+private slots:
+    void handleNumber(){
+        QPushButton *button = qobject_cast<QPushButton *>(sender());
+        QString text = display->text();
+        QString lastSymbol = text.at(text.length() - 1);
+        if (button){
+            if (display->text() == "0" && button->text() != ".")
+                display->setText(button->text());
+            else if (button->text() == "," && lastSymbol == ".")
+                return;
+            else if (button->text() == ",")
+                display->setText(text+".");
+            else
+                display->setText(display->text()+button->text());
+
+        }
+    }
+
+    void handleOperator()
+    {
+        QPushButton* btn = qobject_cast<QPushButton*>(sender());
+        if(btn){
+            QString oper = btn->text();
+            if (oper == "AC")
+            {
+                display->setText("0");
+                return;
             }
+            else if (oper == "=")
+            {
+                    display->setText(QString::number(equal()));
+            }
+            else if (oper == "+/-")
+            {
+                QString text = display->text();
+                if (text[0] == "-"){
+                     text = text.mid(1);
+                     display->setText(text);
+                }else{
+                    text = "-"+text;
+                    display->setText(text);
+                }
+                return;
+            }else
+                handleAction(oper);
+        }
+    }
 
-        operatorButton("+", glayout, 3, 3, "#FF9933");
-        operatorButton("-", glayout, 2, 3, "#FF9933");
-        operatorButton("*", glayout, 1, 3, "#FF9933");
-        operatorButton("÷", glayout, 0, 3, "#FF9933");
-        operatorButton("AC", glayout, 0, 0, "#A0A0A0");
-        operatorButton("%", glayout, 0, 2, "#A0A0A0");
-        numberButton("0", hlayout, 180);
-        numberButton(",", hlayout, 80);
-        operatorButton("=", hlayout);
-        operatorButton("+/-", glayout, 0, 1, "#A0A0A0");
+    void handleAction(const QString &oper){
 
-        setLayout(vlayout);
-        vlayout->addLayout(glayout);
-        vlayout->addLayout(hlayout);
+
+        QString text = display->text();
+        QString lastSymbol = text.at(text.length() - 1);
+        qDebug() << "last: " << lastSymbol;
+
+
+        if (text.contains(QRegExp("[+\\-*÷%]")) && !QString("+\\-*÷%").contains(lastSymbol)){
+            QString updated_text = QString::number(calculate());
+            display->setText(updated_text+oper);
+        }else if(!text.contains(QRegExp("[+-*÷]"))){
+            display->setText(text + oper);
+        }
+    }
+
+
+private:
+    QLineEdit* display = nullptr;
+
+    void addOperator(QGridLayout* glayout, const QString &&label, const QString &color, int &&row, int &&col,  QWidget* parent = nullptr){
+        OperatorButton* btn = new OperatorButton(label, color, this);
+        glayout->addWidget(btn, row, col);
+        connect(btn, &QPushButton::clicked, this, &Calculator::handleOperator);
+    }
+
+    double equal(){
+        QString text = display->text();
+        QStringList operand;
+        double operand1;
+        double operand2;
+        QString oper;
+
+        if (text.contains("+")) {
+            operand = text.split("+");
+            oper = "+";
+        }else if (text.contains("-")) {
+            operand = text.split("-");
+            oper = "-";
+        }else if (text.contains("*")) {
+            operand = text.split("*");
+            oper = "*";
+        }else if (text.contains("÷")) {
+            operand = text.split("÷");
+            oper = "÷";
+        }else if (text.contains("%")) {
+            operand = text.split("%");
+            oper = "%";
+        }
+
+
+        if (operand.length() == 2){
+            operand1 = operand[0].toDouble();
+            operand2 = operand1;
+        }else{
+            operand1 = operand[0].toDouble();
+            operand2 = operand[1].toDouble();
+        }
+
+        if (oper == "+"){
+            return operand1+operand2;
+        }else if (oper == "-"){
+            return operand1-operand2;
+        }else if (oper == "*"){
+            return operand1*operand2;
+        }else if (oper == "÷"){
+            return operand1/operand2;
+        }else{
+            return std::fmod(operand1, operand2);
+        }
+    }
+
+    double calculate(){
+
+        QString text = display->text();
+        QStringList operand;
+        QString oper;
+
+        if (text.contains("+")) {
+            operand = text.split("+");
+            oper = "+";
+        }else if (text.contains("-")) {
+            operand = text.split("-");
+            oper = "-";
+        }else if (text.contains("*")) {
+            operand = text.split("*");
+            oper = "*";
+        }else if (text.contains("÷")) {
+            operand = text.split("÷");
+            oper = "÷";
+        }else if (text.contains("%")) {
+            operand = text.split("%");
+            oper = "%";
+        }
+
+        qDebug() << "Calculate for: " << oper;
+
+        operand = text.split(oper);
+        double operand1 = operand[0].toDouble();
+        double operand2 = operand[1].toDouble();
+
+        if (oper == "+"){
+            return operand1+operand2;
+        }else if (oper == "-"){
+            return operand1-operand2;
+        }else if (oper == "*"){
+            return operand1*operand2;
+        }else if (oper == "÷"){
+            return operand1/operand2;
+        }else if (oper == "%"){
+            return std::fmod(operand1, operand2);
+        }
+
 
     }
- private:
-    QLineEdit* display;
-
 };
 
+
+
 int main(int argc, char *argv[]) {
-    QApplication a(argc, argv);
+    QApplication app(argc, argv);
 
-    QWidget w;
-    w.setFixedSize(410, 750);
-    w.setStyleSheet("background-color: #000000");
+    QWidget window;
+    window.setFixedSize(410, 600);
+    window.setStyleSheet("background-color: #000000");
 
-    QWidget* calculator = new Calculator();
+    Calculator* calculator = new Calculator(&window);
     QVBoxLayout* mainlayout = new QVBoxLayout();
     mainlayout->addWidget(calculator);
-    w.setLayout(mainlayout);
-    w.show();
+    window.setLayout(mainlayout);
+    window.show();
 
-    return a.exec();
+    return app.exec();
 }
 
