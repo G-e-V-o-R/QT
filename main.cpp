@@ -149,12 +149,7 @@ private slots:
             {
                 display->setText("0");
                 return;
-            }
-            else if (oper == "=")
-            {
-                    display->setText(QString::number(equal()));
-            }
-            else if (oper == "+/-")
+            }else if (oper == "+/-")
             {
                 QString text = display->text();
                 if (text[0] == "-"){
@@ -174,13 +169,21 @@ private slots:
 
 
         QString text = display->text();
-        QString lastSymbol = text.at(text.length() - 1);
-        qDebug() << "last: " << lastSymbol;
+        std::cout << "HANDLE ACTION: " << std::endl;
+        qDebug() << "text: " << text ;
 
+        QString lastSymbol = text.at(text.length() - 1);
+        QString updatedText;
 
         if (text.contains(QRegExp("[+\\-*÷%]")) && !QString("+\\-*÷%").contains(lastSymbol)){
-            QString updated_text = QString::number(calculate());
-            display->setText(updated_text+oper);
+            updatedText = QString::number(calculate());
+            if (oper != "=")
+                display->setText(updatedText+oper);
+            else
+                display->setText(updatedText);
+        }else if (text.contains(QRegExp("[+\\-*÷%]")) && QString("+\\-*÷%").contains(lastSymbol) && oper == "="){
+            updatedText = QString::number(calculate());
+            display->setText(updatedText);
         }else if(!text.contains(QRegExp("[+-*÷]"))){
             display->setText(text + oper);
         }
@@ -196,64 +199,19 @@ private:
         connect(btn, &QPushButton::clicked, this, &Calculator::handleOperator);
     }
 
-    double equal(){
-        QString text = display->text();
-        QStringList operand;
-        double operand1;
-        double operand2;
-        QString oper;
-
-        if (text.contains("+")) {
-            operand = text.split("+");
-            oper = "+";
-        }else if (text.contains("-")) {
-            operand = text.split("-");
-            oper = "-";
-        }else if (text.contains("*")) {
-            operand = text.split("*");
-            oper = "*";
-        }else if (text.contains("÷")) {
-            operand = text.split("÷");
-            oper = "÷";
-        }else if (text.contains("%")) {
-            operand = text.split("%");
-            oper = "%";
-        }
-
-
-        if (operand.length() == 2){
-            operand1 = operand[0].toDouble();
-            operand2 = operand1;
-        }else{
-            operand1 = operand[0].toDouble();
-            operand2 = operand[1].toDouble();
-        }
-
-        if (oper == "+"){
-            return operand1+operand2;
-        }else if (oper == "-"){
-            return operand1-operand2;
-        }else if (oper == "*"){
-            return operand1*operand2;
-        }else if (oper == "÷"){
-            return operand1/operand2;
-        }else{
-            return std::fmod(operand1, operand2);
-        }
-    }
 
     double calculate(){
 
         QString text = display->text();
+        qDebug() << text;
         QStringList operand;
         QString oper;
+        double operand1;
+        double operand2;
 
         if (text.contains("+")) {
             operand = text.split("+");
             oper = "+";
-        }else if (text.contains("-")) {
-            operand = text.split("-");
-            oper = "-";
         }else if (text.contains("*")) {
             operand = text.split("*");
             oper = "*";
@@ -263,13 +221,31 @@ private:
         }else if (text.contains("%")) {
             operand = text.split("%");
             oper = "%";
+        }else if (text.contains("-")) {
+            int minusCount = text.count('-');
+            operand = text.split("-");
+            if(minusCount == 2){
+                oper = "-";
+                operand[0] = "-"+operand[1];
+                qDebug() << "1: " << operand[0];
+                operand[1] = operand[2];
+                qDebug() << "2: " << operand[1];
+                operand.removeLast();
+            }else{
+                operand = text.split("-");
+                oper = "-";
+            }
         }
 
-        qDebug() << "Calculate for: " << oper;
+        if (operand.length() == 2 && operand[1] == ""){
+            operand1 = operand[0].toDouble();
+            operand2 = operand1;
+        }else if(operand.length() == 2){
+            operand1 = operand[0].toDouble();
+            operand2 = operand[1].toDouble();
+        }
 
-        operand = text.split(oper);
-        double operand1 = operand[0].toDouble();
-        double operand2 = operand[1].toDouble();
+
 
         if (oper == "+"){
             return operand1+operand2;
@@ -278,6 +254,7 @@ private:
         }else if (oper == "*"){
             return operand1*operand2;
         }else if (oper == "÷"){
+            std::cout << operand1 << " / " << operand2 << std::endl;
             return operand1/operand2;
         }else if (oper == "%"){
             return std::fmod(operand1, operand2);
